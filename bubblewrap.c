@@ -72,7 +72,7 @@ int opt_block_fd = -1;
 int opt_info_fd = -1;
 int opt_seccomp_fd = -1;
 char *opt_sandbox_hostname = NULL;
-int parent_signal_death_signal = 0;
+int parent_death_signal = 0;
 
 typedef enum {
   SETUP_BIND_MOUNT,
@@ -1629,7 +1629,7 @@ parse_args_recurse (int    *argcp,
           if (argv[1][0] == 0 || endptr[0] != 0 || the_signal < 1 || the_signal > 64)
             die ("Invalid signal: %s", argv[1]);
 
-          parent_signal_death_signal = the_signal;
+          parent_death_signal = the_signal;
 
           argv += 1;
           argc -= 1;
@@ -2128,7 +2128,7 @@ main (int    argc,
       setsid () == (pid_t) -1)
     die_with_error ("setsid");
 
-  if (parent_signal_death_signal && prctl(PR_SET_PDEATHSIG, parent_signal_death_signal, 0, 0, 0))
+  if (parent_death_signal && prctl(PR_SET_PDEATHSIG, parent_death_signal, 0, 0, 0))
     die_with_error ("prctl");
 
 
