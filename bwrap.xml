@@ -280,6 +280,12 @@
         the application can feed keyboard input to the terminal.
       </para></listitem>
     </varlistentry>
+    <varlistentry>
+      <term><option>--parent-death-signal</option></term>
+      <listitem><para>
+    Sets signal to be sent to child process (COMMAND) when bwrap process dies. See prctl, PR_SET_PDEATHSIG.
+      </para></listitem>
+    </varlistentry>
   </variablelist>
 </refsect1>
 

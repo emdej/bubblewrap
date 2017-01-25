@@ -72,6 +72,7 @@ int opt_block_fd = -1;
 int opt_info_fd = -1;
 int opt_seccomp_fd = -1;
 char *opt_sandbox_hostname = NULL;
+int parent_signal_death_signal = 0;
 
 typedef enum {
   SETUP_BIND_MOUNT,
@@ -217,6 +218,7 @@ usage (int ecode, FILE *out)
            "    --block-fd FD                Block on FD until some data to read is available\n"
            "    --info-fd FD                 Write information about the running container to FD\n"
            "    --new-session                Create a new terminal session\n"
+           "    --parent-death-signal N      Send signal N to child process (COMMAND) when bwrap dies\n"
           );
   exit (ecode);
 }
@@ -1615,6 +1617,23 @@ parse_args_recurse (int    *argcp,
         {
           opt_new_session = TRUE;
         }
+      else if (strcmp (arg, "--parent-death-signal") == 0)
+        {
+          int the_signal;
+          char *endptr;
+
+          if (argc < 2)
+            die ("--parent-death-signal takes an argument");
+
+          the_signal = strtol(argv[1], &endptr, 10);
+          if (argv[1][0] == 0 || endptr[0] != 0 || the_signal < 1 || the_signal > 64)
+            die ("Invalid signal: %s", argv[1]);
+
+          parent_signal_death_signal = the_signal;
+
+          argv += 1;
+          argc -= 1;
+        }
       else if (*arg == '-')
         {
           die ("Unknown option %s", arg);
@@ -2108,6 +2127,10 @@ main (int    argc,
   if (opt_new_session &&
       setsid () == (pid_t) -1)
     die_with_error ("setsid");
+
+  if (parent_signal_death_signal && prctl(PR_SET_PDEATHSIG, parent_signal_death_signal, 0, 0, 0))
+    die_with_error ("prctl");
+
 
   if (label_exec (opt_exec_label) == -1)
     die_with_error ("label_exec %s", argv[0]);
