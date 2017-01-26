@@ -2169,6 +2169,11 @@ main (int    argc,
 
           return do_init (event_fd, pid, seccomp_data != NULL ? &seccomp_prog : NULL);
         }
+      else
+        {
+          if (parent_death_signal && prctl(PR_SET_PDEATHSIG, parent_death_signal, 0, 0, 0))
+            die_with_error ("prctl");
+        }
     }
 
   __debug__ (("launch executable %s\n", argv[0]));
