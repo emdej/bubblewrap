@@ -73,7 +73,6 @@ int opt_info_fd = -1;
 int opt_seccomp_fd = -1;
 char *opt_sandbox_hostname = NULL;
 int parent_death_signal = 0;
-int own_parent_death_signal = 0;
 
 typedef enum {
   SETUP_BIND_MOUNT,
@@ -219,8 +218,7 @@ usage (int ecode, FILE *out)
            "    --block-fd FD                Block on FD until some data to read is available\n"
            "    --info-fd FD                 Write information about the running container to FD\n"
            "    --new-session                Create a new terminal session\n"
-           "    --parent-death-signal N      Send signal N to child process (COMMAND) when bwrap dies\n"
-           "    --own-parent-death-signal N  Sets signal to be sent to bwrap process when its parent process dies\n"
+           "    --parent-death-signal N      Send signal N to child process (COMMAND) when bwrap or bwrap's parent dies.\n"
           );
   exit (ecode);
 }
@@ -1636,23 +1634,6 @@ parse_args_recurse (int    *argcp,
           argv += 1;
           argc -= 1;
         }
-      else if (strcmp (arg, "--own-parent-death-signal") == 0)
-        {
-          int the_signal;
-          char *endptr;
-
-          if (argc < 2)
-            die ("--own-parent-death-signal takes an argument");
-
-          the_signal = strtol(argv[1], &endptr, 10);
-          if (argv[1][0] == 0 || endptr[0] != 0 || the_signal < 1 || the_signal > 64)
-            die ("Invalid signal: %s", argv[1]);
-
-          own_parent_death_signal = the_signal;
-
-          argv += 1;
-          argc -= 1;
-        }
       else if (*arg == '-')
         {
           die ("Unknown option %s", arg);
@@ -1903,7 +1884,7 @@ main (int    argc,
       /* We don't need any privileges in the launcher, drop them immediately. */
       drop_privs ();
 
-      if (own_parent_death_signal && prctl(PR_SET_PDEATHSIG, own_parent_death_signal, 0, 0, 0))
+      if (parent_death_signal && prctl(PR_SET_PDEATHSIG, 9, 0, 0, 0))
         die_with_error ("prctl");
 
       /* Let child run now that the uid maps are set up */
@@ -2150,10 +2131,6 @@ main (int    argc,
       setsid () == (pid_t) -1)
     die_with_error ("setsid");
 
-  if (parent_death_signal && prctl(PR_SET_PDEATHSIG, parent_death_signal, 0, 0, 0))
-    die_with_error ("prctl");
-
-
   if (label_exec (opt_exec_label) == -1)
     die_with_error ("label_exec %s", argv[0]);
 
@@ -2166,6 +2143,9 @@ main (int    argc,
        * them. Alternatively if we're using sync_fd or lock_files we
        * need some process to own these.
        */
+
+      if (parent_death_signal && prctl(PR_SET_PDEATHSIG, 9, 0, 0, 0))
+        die_with_error ("prctl");
 
       pid = fork ();
       if (pid == -1)
@@ -2191,12 +2171,10 @@ main (int    argc,
 
           return do_init (event_fd, pid, seccomp_data != NULL ? &seccomp_prog : NULL);
         }
-      else
-        {
-          if (parent_death_signal && prctl(PR_SET_PDEATHSIG, parent_death_signal, 0, 0, 0))
-            die_with_error ("prctl");
-        }
     }
+
+  if (parent_death_signal && prctl(PR_SET_PDEATHSIG, parent_death_signal, 9, 0, 0))
+    die_with_error("prctl");
 
   __debug__ (("launch executable %s\n", argv[0]));
 
