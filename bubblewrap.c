@@ -220,6 +220,7 @@ usage (int ecode, FILE *out)
            "    --info-fd FD                 Write information about the running container to FD\n"
            "    --new-session                Create a new terminal session\n"
            "    --parent-death-signal N      Send signal N to child process (COMMAND) when bwrap dies\n"
+           "    --own-parent-death-signal N  Sets signal to be sent to bwrap process when its parent process dies\n"
           );
   exit (ecode);
 }
