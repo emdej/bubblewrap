@@ -65,6 +65,7 @@ bool opt_unshare_cgroup = FALSE;
 bool opt_unshare_cgroup_try = FALSE;
 bool opt_needs_devpts = FALSE;
 bool opt_new_session = FALSE;
+bool opt_die_with_parent = FALSE;
 uid_t opt_sandbox_uid = -1;
 gid_t opt_sandbox_gid = -1;
 int opt_sync_fd = -1;
@@ -72,7 +73,6 @@ int opt_block_fd = -1;
 int opt_info_fd = -1;
 int opt_seccomp_fd = -1;
 char *opt_sandbox_hostname = NULL;
-int parent_death_signal = 0;
 
 typedef enum {
   SETUP_BIND_MOUNT,
@@ -218,7 +218,7 @@ usage (int ecode, FILE *out)
            "    --block-fd FD                Block on FD until some data to read is available\n"
            "    --info-fd FD                 Write information about the running container to FD\n"
            "    --new-session                Create a new terminal session\n"
-           "    --parent-death-signal N      Send signal N to child process (COMMAND) when bwrap or bwrap's parent dies.\n"
+           "    --die-with-parent            Kills (SIGKILL) child process (COMMAND) when bwrap or bwrap's parent dies.\n"
           );
   exit (ecode);
 }
@@ -1617,22 +1617,9 @@ parse_args_recurse (int    *argcp,
         {
           opt_new_session = TRUE;
         }
-      else if (strcmp (arg, "--parent-death-signal") == 0)
+      else if (strcmp (arg, "--die-with-parent") == 0)
         {
-          int the_signal;
-          char *endptr;
-
-          if (argc < 2)
-            die ("--parent-death-signal takes an argument");
-
-          the_signal = strtol(argv[1], &endptr, 10);
-          if (argv[1][0] == 0 || endptr[0] != 0 || the_signal < 1 || the_signal > 64)
-            die ("Invalid signal: %s", argv[1]);
-
-          parent_death_signal = the_signal;
-
-          argv += 1;
-          argc -= 1;
+          opt_die_with_parent = TRUE;
         }
       else if (*arg == '-')
         {
@@ -1884,7 +1871,7 @@ main (int    argc,
       /* We don't need any privileges in the launcher, drop them immediately. */
       drop_privs ();
 
-      if (parent_death_signal && prctl(PR_SET_PDEATHSIG, 9, 0, 0, 0))
+      if (opt_die_with_parent && prctl(PR_SET_PDEATHSIG, 9, 0, 0, 0))
         die_with_error ("prctl");
 
       /* Let child run now that the uid maps are set up */
@@ -2144,7 +2131,7 @@ main (int    argc,
        * need some process to own these.
        */
 
-      if (parent_death_signal && prctl(PR_SET_PDEATHSIG, 9, 0, 0, 0))
+      if (opt_die_with_parent && prctl(PR_SET_PDEATHSIG, 9, 0, 0, 0))
         die_with_error ("prctl");
 
       pid = fork ();
@@ -2173,7 +2160,7 @@ main (int    argc,
         }
     }
 
-  if (parent_death_signal && prctl(PR_SET_PDEATHSIG, parent_death_signal, 9, 0, 0))
+  if (opt_die_with_parent && prctl(PR_SET_PDEATHSIG, 9, 0, 0, 0))
     die_with_error("prctl");
 
   __debug__ (("launch executable %s\n", argv[0]));

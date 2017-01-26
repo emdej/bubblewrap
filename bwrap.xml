@@ -281,11 +281,12 @@
       </para></listitem>
     </varlistentry>
     <varlistentry>
-      <term><option>--parent-death-signal</option></term>
+      <term><option>--die-with-parent</option></term>
       <listitem><para>
-    Sets signal to be sent to child process (COMMAND) when
-        bwrap (any process started by bwrap excluding COMMAND process) or bwrap's parent
-        process dies. Bwrap itself is killed with SIGKILL. See prctl, PR_SET_PDEATHSIG.
+    Ensures child process (COMMAND) dies when bwrap's parent dies. Kills (SIGKILL)
+        all bwrap sandbox processes in sequence from parent to child
+        including COMMAND process when bwrap or bwrap's parent dies.
+        See prctl, PR_SET_PDEATHSIG.
       </para></listitem>
     </varlistentry>
   </variablelist>
