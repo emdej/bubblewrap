@@ -49,6 +49,7 @@ _bwrap() {
 		--seccomp
 		--symlink
 		--parent-death-signal
+		--own-parent-death-signal
 	"
 
 	if [[ "$cur" == -* ]]; then

@@ -73,6 +73,7 @@ int opt_info_fd = -1;
 int opt_seccomp_fd = -1;
 char *opt_sandbox_hostname = NULL;
 int parent_death_signal = 0;
+int own_parent_death_signal = 0;
 
 typedef enum {
   SETUP_BIND_MOUNT,
@@ -1634,6 +1635,23 @@ parse_args_recurse (int    *argcp,
           argv += 1;
           argc -= 1;
         }
+      else if (strcmp (arg, "--own-parent-death-signal") == 0)
+        {
+          int the_signal;
+          char *endptr;
+
+          if (argc < 2)
+            die ("--own-parent-death-signal takes an argument");
+
+          the_signal = strtol(argv[1], &endptr, 10);
+          if (argv[1][0] == 0 || endptr[0] != 0 || the_signal < 1 || the_signal > 64)
+            die ("Invalid signal: %s", argv[1]);
+
+          own_parent_death_signal = the_signal;
+
+          argv += 1;
+          argc -= 1;
+        }
       else if (*arg == '-')
         {
           die ("Unknown option %s", arg);
@@ -1883,6 +1901,9 @@ main (int    argc,
 
       /* We don't need any privileges in the launcher, drop them immediately. */
       drop_privs ();
+
+      if (own_parent_death_signal && prctl(PR_SET_PDEATHSIG, own_parent_death_signal, 0, 0, 0))
+        die_with_error ("prctl");
 
       /* Let child run now that the uid maps are set up */
       val = 1;
